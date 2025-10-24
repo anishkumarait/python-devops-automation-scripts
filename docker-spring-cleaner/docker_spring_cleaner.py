@@ -4,7 +4,6 @@ from rich.table import Table
 
 console = Console()
 
-# -------------------- Functions --------------------
 def get_dangling_images():
     """Return list of dangling images (ID, tag)"""
     result = subprocess.run(
