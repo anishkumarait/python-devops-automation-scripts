@@ -1,7 +1,7 @@
 # Docker Spring Cleaner
 
-![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
-[![License](https://img.shields.io/badge/license-MIT-green)](../LICENSE)
+![Python](https://img.shields.io/badge/Python-3.8+-blue.svg) [![License](https://img.shields.io/badge/license-MIT-green)](../LICENSE)
+
 
 A production-grade Python script to safely identify and clean up unused Docker resources, including:
 - Dangling images (`<none>:<none>`)
