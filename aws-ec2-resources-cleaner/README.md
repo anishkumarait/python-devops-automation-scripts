@@ -22,7 +22,7 @@ It’s built with safety-first principles that performs a dry run by default and
     - Tag key/value pair (for example, --exclude-tag Environment=prod)
     - Explicit resource IDs (for example, --exclude-id i-0123abcd)
 - Supports region, profile, retention period, concurrency control and max worker threads.
-- Logs all operations (both dry-run and execution) to console output as well as generates a JSON report (aws_cleanup_results_<timestamp>.json).
+- Logs all operations (both dry-run and execution) to console output as well as generates a JSON report (aws_cleanup_results_`timestamp`.json).
 - Handles boto3 and botocore exceptions gracefully with retry-safe operations.
 
 ---
@@ -69,16 +69,11 @@ It’s built with safety-first principles that performs a dry run by default and
 - Add the `--execute` flag to actually delete identified resources.
 `python aws_cleanup.py --region us-east-1 --days 30 --execute`
 - Exclude critical resources by tag key, tag key=value or resource ID.
-# Exclude all tagged with 'DoNotDelete'
-`python aws_cleanup.py --region eu-west-1 --days 30 --exclude-tag DoNotDelete`
-# Exclude all prod environment resources
-`python aws_cleanup.py --region eu-west-1 --days 30 --exclude-tag Environment=prod`
-# Exclude specific resource IDs
-`python aws_cleanup.py --region us-east-1 --days 30 --exclude-id i-0123456789abcdef0 --exclude-id vol-0abcd1234`
-- Use AWS Named Profile
-`python aws_cleanup.py --region ap-southeast-1 --profile myawsprofile`
-- Limit concurrent API calls to avoid throttling:
-`python aws_cleanup.py --region us-east-1 --days 60 --max-workers 5`
+    - Exclude all tagged with 'DoNotDelete': `python aws_cleanup.py --region eu-west-1 --days 30 --exclude-tag DoNotDelete`
+    - Exclude all prod environment resources: `python aws_cleanup.py --region eu-west-1 --days 30 --exclude-tag Environment=prod`
+    - Exclude specific resource IDs: `python aws_cleanup.py --region us-east-1 --days 30 --exclude-id i-0123456789abcdef0 --exclude-id vol-0abcd1234`
+- Use AWS Named Profile: `python aws_cleanup.py --region ap-southeast-1 --profile myawsprofile`
+- Limit concurrent API calls to avoid throttling:: `python aws_cleanup.py --region us-east-1 --days 60 --max-workers 5`
 - Command-Line Reference
 ```
 Flag	            Description	                                        Default
