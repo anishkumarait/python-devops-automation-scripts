@@ -82,23 +82,89 @@ It’s built with safety-first principles that performs a dry run by default and
 - Command-Line Reference
 ```
 Flag	            Description	                                        Default
---region	    AWS region to target	                        Required
---profile	    AWS named profile	                                None
---days	            Retention threshold (in days)	                30
---execute	    Actually perform deletions (omit for dry-run)	False
+--region	        AWS region to target	                            Required
+--profile	        AWS named profile	                                None
+--days	            Retention threshold (in days)	                    30
+--execute	        Actually perform deletions (omit for dry-run)	    False
 --exclude-tag	    Exclude by tag or tag=value	                        Optional
---exclude-id	    Exclude by resource ID	                        Optional
---max-workers	    Max parallel cleanup threads	                10
+--exclude-id	    Exclude by resource ID	                            Optional
+--max-workers	    Max parallel cleanup threads	                    10
 ```
 
 ---
 
 ## Sample Output
 ```
-
+2025-11-13 16:41:30,727 [INFO] Starting cleanup: region=eu-west-2, retention_days=10, dry_run=True
+2025-11-13 16:41:30,728 [INFO] Scanning for stopped EC2 instances...
+2025-11-13 16:41:30,847 [INFO] Found 0 stopped instances older than 10 days.
+2025-11-13 16:41:30,848 [INFO] Scanning for unattached EBS volumes...
+2025-11-13 16:41:30,981 [INFO] Found 0 unattached volumes older than 10 days.
+2025-11-13 16:41:30,981 [INFO] Scanning for old AMIs owned by self...
+2025-11-13 16:41:31,176 [INFO] Found 2 AMIs older than 10 days.
+2025-11-13 16:41:31,176 [INFO] AMI ami-0a4982e85f786a114 has 1 associated snapshot(s).
+2025-11-13 16:41:31,177 [INFO] AMI ami-0abb5e1126e036bc1 has 1 associated snapshot(s).
+2025-11-13 16:41:31,177 [INFO] [DRY-RUN] Would deregister AMI ami-0a4982e85f786a114
+2025-11-13 16:41:31,177 [INFO] [DRY-RUN] Would deregister AMI ami-0abb5e1126e036bc1
+2025-11-13 16:41:31,177 [INFO] [DRY-RUN] Would delete snapshot snap-05de73277a198be2e (associated with AMI ami-0a4982e85f786a114)
+2025-11-13 16:41:31,178 [INFO] [DRY-RUN] Would delete snapshot snap-0ca53f223852e99b0 (associated with AMI ami-0abb5e1126e036bc1)
+2025-11-13 16:41:31,184 [INFO] Scanning for orphaned snapshots owned by self...
+2025-11-13 16:41:31,424 [INFO] Found 2 orphaned snapshots older than 10 days.
+2025-11-13 16:41:31,425 [INFO] [DRY-RUN] Would delete snapshot snap-08a6f1b764b06b786
+2025-11-13 16:41:31,425 [INFO] [DRY-RUN] Would delete snapshot snap-0a91ea3840c459668
+2025-11-13 16:41:31,439 [INFO] Cleanup run complete.
+2025-11-13 16:41:31,440 [INFO] Summary (high level):
+2025-11-13 16:41:31,440 [INFO] Stopped instances found: 0
+2025-11-13 16:41:31,440 [INFO] Volumes found: 0
+2025-11-13 16:41:31,440 [INFO] AMIs found: 2
+2025-11-13 16:41:31,440 [INFO] Orphaned snapshots found: 2
+2025-11-13 16:41:31,441 [INFO] Detailed results written to aws_cleanup_results_1763052091.json
 ```
 
 Example JSON Report (aws_cleanup_results_1731509421.json)
 ```
-
+{
+  "stopped_instances_found": [],
+  "volumes_found": [],
+  "amis_found": [
+    "ami-0a4982e85f786a114",
+    "ami-0abb5e1126e036bc1",
+  ],
+  "deregister_amis": [
+    {
+      "ImageId": "ami-0a4982e85f786a114",
+      "Deregistered": "DryRun",
+      "SnapshotResults": [
+        {
+          "SnapshotId": "snap-05de73277a198be2e",
+          "Action": "DryRun"
+        }
+      ]
+    },
+    {
+      "ImageId": "ami-0abb5e1126e036bc1",
+      "Deregistered": "DryRun",
+      "SnapshotResults": [
+        {
+          "SnapshotId": "snap-0ca53f223852e99b0",
+          "Action": "DryRun"
+        }
+      ]
+    }
+  ],
+  "orphaned_snapshots_found": [
+    "snap-08a6f1b764b06b786",
+    "snap-0a91ea3840c459668"
+  ],
+  "delete_snapshots": [
+    {
+      "SnapshotId": "snap-08419a4db609d5e0d",
+      "Action": "DryRun"
+    },
+    {
+      "SnapshotId": "snap-0a91ea3840c459668",
+      "Action": "DryRun"
+    }
+  ]
+}
 ```
