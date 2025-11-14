@@ -34,7 +34,6 @@ def now_utc():
     return datetime.now(timezone.utc)
 
 def parse_aws_time(timestr):
-    # AWS returns ISO8601-ish strings; use dateutil parser for robustness
     return dateparser.parse(timestr) if isinstance(timestr, str) else timestr
 
 def age_in_days(dt):
@@ -57,13 +56,13 @@ class Cleaner:
         self.profile = profile
         self.retention_days = retention_days
         self.dry_run = dry_run
-        self.exclude_tags = exclude_tags or {}  # dict: {Key: Value} or Value==None to only check existence
+        self.exclude_tags = exclude_tags or {} 
         self.exclude_ids = set(exclude_ids or [])
         self.max_workers = max_workers
 
         # boto3 clients/resources
         self.ec2_client, self._ = safe_boto_client('ec2', region, profile)
-        # Using the client primarily; some operations may use resource
+
         self.ec2_resource = boto3.Session(profile_name=profile).resource('ec2', region_name=region) if profile else boto3.resource('ec2', region_name=region)
 
     def _is_excluded_by_tags(self, tags):
@@ -101,13 +100,11 @@ class Cleaner:
                     for inst in reservation.get('Instances', []):
                         instance_id = inst['InstanceId']
                         state = inst['State']['Name']
-                        launch_time = inst.get('LaunchTime')  # timezone-aware
-                        # We consider 'stopped' age since state transition might be more relevant; try to use StateTransitionReason? Not always present.
-                        # Use LaunchTime as fallback — conservative approach.
+                        launch_time = inst.get('LaunchTime')  
                         if self._is_excluded_id(instance_id) or self._is_excluded_by_tags(inst.get('Tags', [])):
                             logger.debug(f"Excluded instance {instance_id} by tag/id.")
                             continue
-                        # Calculate age from LaunchTime — conservative
+
                         age = age_in_days(launch_time) if launch_time else None
                         logger.debug(f"Instance {instance_id} state={state}, launch_time={launch_time}, age_days={age}")
                         if age is not None and age >= self.retention_days:
@@ -124,7 +121,7 @@ class Cleaner:
             return []
         logger.info(f"{'Dry-run: would terminate' if self.dry_run else 'Terminating'} {len(instance_ids)} instances.")
         results = []
-        # use concurrency for many instances
+
         def _terminate_batch(batch):
             try:
                 if self.dry_run:
@@ -136,7 +133,7 @@ class Cleaner:
             except ClientError as e:
                 logger.error(f"Failed terminating {batch}: {e}")
                 return {'Error': str(e)}
-        # chunk into batches of 10 (API limit)
+
         CHUNK = 10
         with ThreadPoolExecutor(max_workers=self.max_workers) as ex:
             futures = []
@@ -158,7 +155,7 @@ class Cleaner:
             for page in page_iter:
                 for v in page.get('Volumes', []):
                     vol_id = v['VolumeId']
-                    create_time = v.get('CreateTime') or v.get('CreateTime')  # should exist
+                    create_time = v.get('CreateTime') or v.get('CreateTime')
                     if self._is_excluded_id(vol_id) or self._is_excluded_by_tags(v.get('Tags', [])):
                         logger.debug(f"Excluded volume {vol_id}")
                         continue
@@ -194,7 +191,6 @@ class Cleaner:
             pass
         images = []
         try:
-            # Only images owned by self (self account)
             resp = self.ec2_client.describe_images(Owners=['self'])
             for img in resp.get('Images', []):
                 img_id = img['ImageId']
@@ -218,7 +214,6 @@ class Cleaner:
         """
         img_id = image['ImageId']
         snapshots = []
-        # extract snapshot ids from BlockDeviceMappings
         for bdm in image.get('BlockDeviceMappings', []):
             ebs = bdm.get('Ebs')
             if ebs and 'SnapshotId' in ebs:
@@ -240,7 +235,6 @@ class Cleaner:
             logger.error(f"Failed to deregister AMI {img_id}: {e}")
             results['Deregistered'] = str(e)
 
-        # attempt delete associated snapshots
         for snap in snapshots:
             try:
                 if self.dry_run:
@@ -263,10 +257,8 @@ class Cleaner:
         logger.info("Scanning for orphaned snapshots owned by self...")
         snapshots_to_delete = []
         try:
-            # get all snapshots owned by self
             paginator = self.ec2_client.get_paginator('describe_snapshots')
             page_iter = paginator.paginate(OwnerIds=['self'])
-            # build a set of snapshot ids referenced by images (block device mappings)
             owned_images = self.ec2_client.describe_images(Owners=['self']).get('Images', [])
             referenced_snaps = set()
             for img in owned_images:
@@ -311,14 +303,14 @@ class Cleaner:
         logger.info(f"Starting cleanup: region={self.region}, retention_days={self.retention_days}, dry_run={self.dry_run}")
         results = {}
 
-        # 1) stopped instances
+        # stopped instances
         stopped = self.find_stopped_instances()
         results['stopped_instances_found'] = [i['InstanceId'] for i in stopped]
         if stopped:
             ids = [i['InstanceId'] for i in stopped]
             results['terminate_instances'] = self.terminate_instances(ids)
 
-        # 2) unattached volumes
+        # unattached volumes
         volumes = self.find_unattached_volumes()
         results['volumes_found'] = [v['VolumeId'] for v in volumes]
         if volumes:
@@ -329,7 +321,7 @@ class Cleaner:
                     vol_results.append(fut.result())
                 results['delete_volumes'] = vol_results
 
-        # 3) old AMIs
+        # old AMIs
         amis = self.find_old_amis()
         results['amis_found'] = [a['ImageId'] for a in amis]
         if amis:
@@ -340,7 +332,7 @@ class Cleaner:
                     ami_results.append(fut.result())
                 results['deregister_amis'] = ami_results
 
-        # 4) orphaned snapshots
+        # orphaned snapshots
         snaps = self.find_orphaned_snapshots()
         results['orphaned_snapshots_found'] = [s['SnapshotId'] for s in snaps]
         if snaps:
@@ -395,14 +387,13 @@ def main():
                       max_workers=args.max_workers)
     results = cleaner.run()
 
-    # Summarize
+    # Summary
     logger.info("Summary (high level):")
     logger.info(f"Stopped instances found: {len(results.get('stopped_instances_found', []))}")
     logger.info(f"Volumes found: {len(results.get('volumes_found', []))}")
     logger.info(f"AMIs found: {len(results.get('amis_found', []))}")
     logger.info(f"Orphaned snapshots found: {len(results.get('orphaned_snapshots_found', []))}")
 
-    # Save detailed results to file for auditing
     out_path = f"aws_cleanup_results_{int(time.time())}.json"
     try:
         import json
